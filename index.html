@@ -1,101 +1,126 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Wood Volume</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Wood Volume Calculator</title>
 
-    <link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json">
 
-    <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            padding: 20px;
-        }
+<style>
+body{
+  font-family: Arial;
+  text-align:center;
+  padding:20px;
+}
 
-        input {
-            padding: 12px;
-            margin: 8px;
-            width: 80%;
-            font-size: 18px;
-        }
+h2{
+  margin-bottom:20px;
+}
 
-        button {
-            padding: 12px 16px;
-            margin: 5px;
-            font-size: 16px;
-        }
+input{
+  padding:15px;
+  margin:10px;
+  width:85%;
+  font-size:18px;
+}
 
-        #result {
-            font-size: 24px;
-            margin-top: 20px;
-            font-weight: bold;
-            color: green;
-        }
-    </style>
+button{
+  padding:15px 20px;
+  margin:10px;
+  font-size:18px;
+  cursor:pointer;
+}
+
+#result{
+  font-size:26px;
+  margin-top:20px;
+  font-weight:bold;
+  color:green;
+}
+</style>
 </head>
 
 <body>
 
-    <h2>Wood Volume Calculator</h2>
+<h2>Wood Volume Calculator</h2>
 
-    <input id="a" placeholder="Length (mm)">
-    <input id="b" placeholder="Width (mm)">
-    <input id="c" placeholder="Height (mm)">
+<input id="a" placeholder="Length (mm)">
+<input id="b" placeholder="Width (mm)">
+<input id="c" placeholder="Height (mm)">
 
-    <br>
+<br>
 
-    <button onclick="startVoice()">🎤 Speak 3 Numbers</button>
-    <button onclick="calc()">Calculate</button>
+<button onclick="startVoice()">🎤 Speak 3 Numbers</button>
+<button onclick="calc()">Calculate</button>
 
-    <div id="result">Result: --</div>
+<div id="result">Result: --</div>
 
-    <script>
+<script>
 
-        function calc() {
-            let a = +aEl.value || 0;
-            let b = +bEl.value || 0;
-            let c = +cEl.value || 0;
+const aEl = document.getElementById('a');
+const bEl = document.getElementById('b');
+const cEl = document.getElementById('c');
+const resultEl = document.getElementById('result');
 
-            let res = ((a / 100) * (b / 100) * (c / 100)) / 16;
-            result.innerText = "Result: " + res.toFixed(3);
-        }
+function calc(){
+  let A = +aEl.value || 0;
+  let B = +bEl.value || 0;
+  let C = +cEl.value || 0;
 
-        const aEl = document.getElementById('a');
-        const bEl = document.getElementById('b');
-        const cEl = document.getElementById('c');
-        const result = document.getElementById('result');
+  let res = ((A/100)*(B/100)*(C/100))/16;
 
-        function startVoice() {
-            let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            rec.lang = "ml-IN"; // Malayalam
-            rec.start();
+  resultEl.innerText = "Result: " + res.toFixed(3);
+}
 
-            rec.onresult = (e) => {
-                let text = e.results[0][0].transcript;
+// 🎤 Improved Voice Input
+function startVoice(){
 
-                // Extract numbers
-                let nums = text.match(/\d+/g);
+  let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = new SpeechRecognition();
 
-                if (nums && nums.length >= 3) {
-                    aEl.value = nums[0];
-                    bEl.value = nums[1];
-                    cEl.value = nums[2];
-                    calc();
-                } else {
-                    alert("Speak 3 numbers");
-                }
-            }
-        }
+  rec.lang = "ml-IN";
+  rec.continuous = true;      // keep listening
+  rec.interimResults = false;
 
-        // Service worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
+  rec.start();
 
-    </script>
+  let silenceTimer;
+
+  rec.onresult = (e)=>{
+
+    clearTimeout(silenceTimer);
+
+    let text = e.results[e.results.length-1][0].transcript;
+
+    console.log("Heard:", text);
+
+    let nums = text.match(/\d+/g);
+
+    if(nums && nums.length >= 3){
+      aEl.value = nums[0];
+      bEl.value = nums[1];
+      cEl.value = nums[2];
+      calc();
+      rec.stop();
+    }
+
+    // Stop after 12 seconds silence
+    silenceTimer = setTimeout(()=>{
+      rec.stop();
+    }, 12000);
+  };
+
+  rec.onerror = ()=>{
+    rec.stop();
+  };
+}
+
+// Service Worker register
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+
+</script>
 
 </body>
-
 </html>
