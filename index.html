@@ -102,62 +102,54 @@ function startVoice(){
 
   let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  let attempts = 0;
-  const maxAttempts = 3;
+  statusEl.innerText = "🎤 Listening...";
+  beep();
 
-  function listen(){
+  let rec = new SpeechRecognition();
 
-    statusEl.innerText = "🎤 Listening...";
-    beep();
+  rec.lang = "ml-IN";
+  rec.continuous = false;
+  rec.interimResults = true;
 
-    let rec = new SpeechRecognition();
-    rec.lang = "ml-IN";
-    rec.continuous = false;
-    rec.interimResults = false;
+  rec.start();
 
-    rec.start();
+  rec.onresult = (e)=>{
 
-    rec.onresult = (e)=>{
-      let text = e.results[0][0].transcript;
-      console.log("Heard:", text);
+    let transcript = "";
 
-      let nums = text.match(/\d+/g);
-
-      if(nums && nums.length >= 3){
-        aEl.value = nums[0];
-        bEl.value = nums[1];
-        cEl.value = nums[2];
-
-        statusEl.innerText = "✅ Got numbers!";
-        calc();
-        rec.stop();
-      } else {
-        retry();
-      }
-    };
-
-    rec.onspeechend = ()=>{
-      rec.stop();
-    };
-
-    rec.onerror = ()=>{
-      retry();
-    };
-  }
-
-  function retry(){
-    attempts++;
-
-    if(attempts < maxAttempts){
-      statusEl.innerText = "⚠️ Try again... ("+attempts+")";
-      listen();
-    } else {
-      statusEl.innerText = "❌ Couldn't detect. Tap mic again.";
-      speak("Please try again");
+    for(let i=0;i<e.results.length;i++){
+      transcript += e.results[i][0].transcript + " ";
     }
-  }
 
-  listen();
+    // realtime display
+    statusEl.innerText = "Heard: " + transcript;
+
+    let nums = transcript.match(/\d+/g);
+
+    if(nums && nums.length >= 3){
+      aEl.value = nums[0];
+      bEl.value = nums[1];
+      cEl.value = nums[2];
+
+      calc();
+      statusEl.innerText = "✅ Done";
+      rec.stop();
+    }
+  };
+
+  rec.onspeechend = ()=>{
+    rec.stop();
+  };
+
+  rec.onend = ()=>{
+    if(!(aEl.value && bEl.value && cEl.value)){
+      statusEl.innerText = "⚠️ Not enough numbers. Tap mic again.";
+    }
+  };
+
+  rec.onerror = ()=>{
+    statusEl.innerText = "❌ Mic error. Tap again.";
+  };
 }
 
 // service worker
