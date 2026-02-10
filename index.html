@@ -3,7 +3,6 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Wood Volume Calculator</title>
-
 <link rel="manifest" href="manifest.json">
 
 <style>
@@ -14,28 +13,34 @@ body{
 }
 
 h2{
-  margin-bottom:20px;
+  margin-bottom:15px;
 }
 
 input{
   padding:15px;
-  margin:10px;
+  margin:8px;
   width:85%;
   font-size:18px;
 }
 
 button{
   padding:15px 20px;
-  margin:10px;
+  margin:8px;
   font-size:18px;
   cursor:pointer;
 }
 
 #result{
   font-size:26px;
-  margin-top:20px;
+  margin-top:15px;
   font-weight:bold;
   color:green;
+}
+
+#status{
+  font-size:18px;
+  color:#555;
+  margin-top:10px;
 }
 </style>
 </head>
@@ -50,9 +55,10 @@ button{
 
 <br>
 
-<button onclick="startVoice()">🎤 Speak 3 Numbers</button>
+<button onclick="startVoice()">🎤 Speak Numbers</button>
 <button onclick="calc()">Calculate</button>
 
+<div id="status"></div>
 <div id="result">Result: --</div>
 
 <script>
@@ -61,6 +67,23 @@ const aEl = document.getElementById('a');
 const bEl = document.getElementById('b');
 const cEl = document.getElementById('c');
 const resultEl = document.getElementById('result');
+const statusEl = document.getElementById('status');
+
+function beep(){
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = 800;
+  osc.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.15);
+}
+
+function speak(text){
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.rate = 1;
+  speechSynthesis.speak(msg);
+}
 
 function calc(){
   let A = +aEl.value || 0;
@@ -68,54 +91,76 @@ function calc(){
   let C = +cEl.value || 0;
 
   let res = ((A/100)*(B/100)*(C/100))/16;
+  let r = res.toFixed(3);
 
-  resultEl.innerText = "Result: " + res.toFixed(3);
+  resultEl.innerText = "Result: " + r;
+
+  speak("Result " + r);
 }
 
-// 🎤 Improved Voice Input
 function startVoice(){
 
   let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = new SpeechRecognition();
 
-  rec.lang = "ml-IN";
-  rec.continuous = true;      // keep listening
-  rec.interimResults = false;
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  rec.start();
+  function listen(){
 
-  let silenceTimer;
+    statusEl.innerText = "🎤 Listening...";
+    beep();
 
-  rec.onresult = (e)=>{
+    let rec = new SpeechRecognition();
+    rec.lang = "ml-IN";
+    rec.continuous = false;
+    rec.interimResults = false;
 
-    clearTimeout(silenceTimer);
+    rec.start();
 
-    let text = e.results[e.results.length-1][0].transcript;
+    rec.onresult = (e)=>{
+      let text = e.results[0][0].transcript;
+      console.log("Heard:", text);
 
-    console.log("Heard:", text);
+      let nums = text.match(/\d+/g);
 
-    let nums = text.match(/\d+/g);
+      if(nums && nums.length >= 3){
+        aEl.value = nums[0];
+        bEl.value = nums[1];
+        cEl.value = nums[2];
 
-    if(nums && nums.length >= 3){
-      aEl.value = nums[0];
-      bEl.value = nums[1];
-      cEl.value = nums[2];
-      calc();
+        statusEl.innerText = "✅ Got numbers!";
+        calc();
+        rec.stop();
+      } else {
+        retry();
+      }
+    };
+
+    rec.onspeechend = ()=>{
       rec.stop();
+    };
+
+    rec.onerror = ()=>{
+      retry();
+    };
+  }
+
+  function retry(){
+    attempts++;
+
+    if(attempts < maxAttempts){
+      statusEl.innerText = "⚠️ Try again... ("+attempts+")";
+      listen();
+    } else {
+      statusEl.innerText = "❌ Couldn't detect. Tap mic again.";
+      speak("Please try again");
     }
+  }
 
-    // Stop after 12 seconds silence
-    silenceTimer = setTimeout(()=>{
-      rec.stop();
-    }, 12000);
-  };
-
-  rec.onerror = ()=>{
-    rec.stop();
-  };
+  listen();
 }
 
-// Service Worker register
+// service worker
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js');
 }
